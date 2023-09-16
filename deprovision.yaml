@@ -1,0 +1,6 @@
+- name: Terminate running cassandra and remove all files
+  hosts: cassandra-servers
+  remote_user: root
+  roles:
+    - cassandra_uninstall
+    

@@ -1,0 +1,135 @@
+- name: Install openjdk11
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - java-11-openjdk
+    - java-11-openjdk-devel
+    state: present
+  when: (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "7") or (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "8") or (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "9") 
+  tags: cassandra
+
+
+- name: Install yum-utils  
+  yum:
+    name: yum-utils
+    state: present
+  when: (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "7") or (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "8") or (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "9") 
+  tags: cassandra
+
+- name: Install python3.11 and python3-pip 
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - python3.11
+    - python3-pip
+    state: present
+  when: (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "7") or (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "8") or (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "9") 
+  tags: cassandra
+
+- name: Install cqlsh through pip module
+  command: pip3 install cqlsh
+  tags: cassandra
+
+
+- name: Install repository for cassandra
+  copy:
+    src: cassandra.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+  tags: cassandra
+
+- name: Download cassandra keys
+  get_url:
+    url: https://downloads.apache.org/cassandra/KEYS
+    dest: /root/KEYS
+    mode: 0644
+  tags: cassandra
+
+- name: Import cassandra keys through gpg
+  command: gpg --import KEYS
+  tags: cassandra
+
+- name: Remove KEYS file after gpg import 
+  file:
+    path: /root/KEYS
+    state: absent
+  tags: cassandra
+
+- name: Install cassandra  
+  yum:
+    name: cassandra
+    state: present
+  when: (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "7")
+  tags: cassandra
+
+- name: Install cassandra  
+  dnf:
+    name: cassandra
+    state: present
+  when: (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "8") or (ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "9") 
+  tags: cassandra
+
+- name: Copy cassandra.service into /etc/systemd/system/
+  copy:
+    src: cassandra.service
+    dest: /etc/systemd/system/
+    owner: root
+    group: root
+    mode: 0644
+  tags: cassandra
+
+- name: Reload systemd
+  systemd: daemon_reload=yes
+  tags: cassandra
+
+- name: Enable cassandra at boot and start
+  systemd:
+    name: cassandra.service
+    state: started
+    enabled: True
+  tags: cassandra
+
+
+- name: create Zone "cassandra-cluster" on firewalld
+  firewalld:
+    zone: cassandra-cluster
+    state: present
+    permanent: yes
+  tags: cassandra
+
+- name: Add Ip-address on zone "cassandra-cluster" on firewalld
+  firewalld:
+    source: "{{ ansible_all_ipv4_addresses[0] }}"
+    zone: cassandra-cluster
+    permanent: true
+    state: enabled
+  tags: cassandra
+
+- name: Adding port 7000/tcp for cassandra
+  firewalld:
+    port: 7000/tcp
+    permanent: true
+    immediate: true
+    state: enabled
+  tags: cassandra
+
+
+- name: Adding port 9042/tcp for cassandra
+  firewalld:
+    port: 9042/tcp
+    permanent: true
+    immediate: true
+    state: enabled
+  notify: Reloading firewalld rules
+  tags: cassandra
+
+
+
+
+
+
+

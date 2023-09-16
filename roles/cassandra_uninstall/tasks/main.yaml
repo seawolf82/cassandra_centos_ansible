@@ -1,0 +1,65 @@
+
+- name: Disable cassandra at boot and stopped service
+  systemd:
+    name: cassandra.service
+    state: stopped
+    enabled: false
+    daemon_reload: yes
+  ignore_errors: True  
+  tags: cassandra
+
+- name: Remove cassandra service into systemd and reloading daemon
+  file: 
+    path: /etc/systemd/system/cassandra.service 
+    state: absent
+  tags: cassandra
+
+- name: Remove cassandra
+  yum:
+    name: cassandra
+    state: absent
+  tags: cassandra
+
+- name: Remove cassandra repository
+  file: 
+    path: /etc/yum.repos.d/cassandra.repo 
+    state: absent
+  tags: cassandra
+
+
+- name: Remove cqlsh through pip module
+  command: pip3 uninstall cqlsh -y
+  tags: cassandra
+
+
+- name: Removing port 9042/tcp for cassandra
+  firewalld:
+    port: 9042/tcp
+    permanent: true
+    immediate: true
+    state: disabled
+  tags: cassandra
+
+- name: Removing port 7000/tcp for cassandra
+  firewalld:
+    port: 7000/tcp
+    permanent: true
+    immediate: true
+    state: disabled
+  tags: cassandra
+
+- name: Remove Ip-address on zone "cassandra-cluster" on firewalld
+  firewalld:
+    source: "{{ ansible_all_ipv4_addresses[0] }}"
+    zone: cassandra-cluster
+    permanent: true
+    state: disabled
+  tags: cassandra
+
+- name: Remove Zone "cassandra-cluster" on firewalld
+  firewalld:
+    zone: cassandra-cluster
+    state: absent
+    permanent: yes
+  notify: Reloading firewalld rules
+  tags: cassandra
